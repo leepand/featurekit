@@ -160,7 +160,7 @@ class FeatureSDK:
         filename = self.db_filename
         remote_name = self.db_filename
         success_cnt_today = self.get_success_cnt()
-        info_key = f"{self.model_name}"
+        info_key = f"{self.model_name}:{self.day}"
         data = {
             "model_name": self.model_name,
             "db_name": self.db_filename,
