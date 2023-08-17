@@ -49,7 +49,7 @@ def get_bj_day_time():
     return _bj
 
 
-model_file = "/home/leepand/sundi/test/test_peak_insert_cnt.db"
+model_file = "/home/leepand/sundi/test/peek_experience_v1_insert_cnt.db"
 
 insert_cnt_store = hirlite.Rlite(model_file, encoding="utf8")
 
@@ -64,4 +64,4 @@ day = get_bj_day()
 k_cnt = f"{day}"
 
 selected_genre = insert_cnt_store.SCARD(k_cnt)
-st.subheader(f"成功条数: {selected_genre}, 执行时间: {select_time}")
+st.subheader(f"模型：peek_experience_v1,成功条数: {selected_genre}, 执行时间: {select_time}")

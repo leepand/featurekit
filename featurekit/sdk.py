@@ -71,6 +71,8 @@ class FeatureSDK:
         self.db_name = db_name
         self.db_filename = f"{db_name}.db"
         self.model_name = model_name
+        self.center_db_name = "/home/leepand/center_db/monitor.db"
+        self.center_db = hirlite.Rlite(self.center_db_name, encoding="utf8")
 
         self.day = get_bj_day()
 
@@ -134,7 +136,7 @@ class FeatureSDK:
 
         return r
 
-    def push_feature_from_db(self, mode="dev", version=1):
+    def push_feature_from_db(self, correct_data_cnt, mode="dev", version=1):
         """
         Pushes a feature file to the SDK server.
 
@@ -154,10 +156,21 @@ class FeatureSDK:
         """
         filename = self.db_filename
         remote_name = self.db_filename
+        success_cnt_today = self.get_success_cnt()
+        info_key = f"{self.model_name}"
+        data = {
+            "model_name": self.model_name,
+            "db_name": self.db_filename,
+            "success_insert_cnt": success_cnt_today,
+            "correct_data_cnt": correct_data_cnt,
+            "current_date": self.day,
+        }
+        if isinstance(data, dict):
+            self.center_db.set(info_key, pickle.dumps(data))
 
         with open(filename, "rb") as f:
             _f = {"file": f}
-            r = self._request(
+            return self._request(
                 "POST",
                 "models/push",
                 data={
@@ -167,7 +180,6 @@ class FeatureSDK:
                 },
                 files=_f,
             ).json()
-        return r
 
     def insert_db_local(self, data):
         """
