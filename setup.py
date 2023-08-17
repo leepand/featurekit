@@ -16,10 +16,7 @@ exec(
     about,
 )
 
-required = [
-    "click",
-    "tqdm",
-]
+required = ["click", "tqdm", "streamlit"]
 extras_require = {
     "dev": ["pip-tools", "pytest", "python-Levenshtein"],
     "serve": ["uvicorn[standard]", "fastapi", "python-multipart", "pydantic"],
