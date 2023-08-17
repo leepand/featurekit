@@ -49,7 +49,7 @@ def get_bj_day_time():
     return _bj
 
 
-model_file = "/home/leepand/sundi/test/peek_experience_v1_insert_cnt.db"
+center_db = "/home/leepand/center_db/monitor.db"
 
 insert_cnt_store = hirlite.Rlite(model_file, encoding="utf8")
 

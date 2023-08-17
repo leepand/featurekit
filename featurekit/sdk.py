@@ -53,7 +53,9 @@ class FeatureSDK:
     A class representing a Fearure SDK.
     """
 
-    def __init__(self, host="http://1.31.24.138:6901", db_name="", model_name=""):
+    def __init__(
+        self, host="http://1.31.24.138:6901", db_name="", model_name="", data_path=""
+    ):
         """
         初始化FeatureSDK对象。
 
@@ -73,6 +75,7 @@ class FeatureSDK:
         self.model_name = model_name
         self.center_db_name = "/home/leepand/center_db/monitor.db"
         self.center_db = hirlite.Rlite(self.center_db_name, encoding="utf8")
+        self.data_path = data_path
 
         self.day = get_bj_day()
 
@@ -164,6 +167,7 @@ class FeatureSDK:
             "success_insert_cnt": success_cnt_today,
             "correct_data_cnt": correct_data_cnt,
             "current_date": self.day,
+            "data_path": self.data_path,
         }
         if isinstance(data, dict):
             self.center_db.set(info_key, pickle.dumps(data))
