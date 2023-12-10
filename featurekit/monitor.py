@@ -1,7 +1,8 @@
 import streamlit as st
 import hirlite
 import pandas as pd
-
+import os
+import pickle
 
 from datetime import datetime
 from datetime import timezone
@@ -13,6 +14,22 @@ SHA_TZ = timezone(
     timedelta(hours=8),
     name="Asia/Shanghai",
 )
+
+
+def get_file_size(file_path):
+    # 获取文件大小（以字节为单位）
+    file_size = os.path.getsize(file_path)
+    print("文件大小（字节）:", file_size)
+
+    # 获取文件大小（以可读格式显示）
+    file_size_readable = os.path.getsize(file_path)
+    size_suffixes = ["B", "KB", "MB", "GB", "TB"]
+    index = 0
+    while file_size_readable >= 1024 and index < len(size_suffixes) - 1:
+        file_size_readable /= 1024
+        index += 1
+    file_size_readable = f"{file_size_readable:.2f} {size_suffixes[index]}"
+    return file_size_readable
 
 
 def number_format(number):
@@ -66,6 +83,7 @@ day = get_bj_day()
 k_cnt = f"{day}"
 model_list_sundi = [
     {
+        "owner": "sundi",
         "model_name": "probs",
         "model_name_desc": "付费弹窗离线模型",
         "db_name": "offline_popup_model",
@@ -80,11 +98,70 @@ model_list_sundi = [
             "uid": "10739979",
             "created_at": "2023-08-16",
         },
-    }
+    },
+    {
+        "owner": "sundi",
+        "model_name": "navig_promotion",
+        "model_name_desc": "航海定价促销付费/道具先验",
+        "db_name": "navig_pricing_promotion_model",
+        "data_exm": {
+            "uid": "7765633",
+            "data": {
+                "booster": {
+                    "golden_spin": 0.4545,
+                    "rapid_set": 0.0909,
+                    "card_blast": 0.1818,
+                    "build_fever": 0.2727,
+                }
+            },
+            "model_type": "navig_promotion",
+            "current_date": "2023-08-17",
+        },
+    },
+    {
+        "owner": "sundi",
+        "model_name": "uni_pricing",
+        "db_name": "uni_pricing_prior",
+        "model_name_desc": "uni定价近1个月的DC项付费先验",
+        "data_exm": {
+            "uid": "27513228",
+            "model_type": "uni_pricing",
+            "pay": {"DC2": 1, "DC9": 1},
+            "current_date": "2023-06-29",
+        },
+    },
+    {
+        "owner": "sundi",
+        "model_name": "uni_pricing_spty",
+        "model_name_desc": "uni定价近1个月的sp_ty购买偏好",
+        "db_name": "uni_pricing_prior_spty",
+        "data_exm": {
+            "uid": "27513228",
+            "model_type": "uni_pricing_spty",
+            "pay": {
+                "last_7days": {"B13": 11.99, "A01": 1.99, "E05": 1.99},
+                "last_month": {"B13": 11.99, "A01": 1.99, "E05": 1.99},
+            },
+            "current_date": "2023-07-10",
+        },
+    },
+    {
+        "owner": "sundi",
+        "model_name": "peek_experience",
+        "model_name_desc": "巅峰体验潜在用户群",
+        "db_name": "peek_experience_v1",
+        "data_exm": {
+            "uid": "27513228",
+            "model_type": "peek_experience",
+            "peek_state": 0.08002756829971648,
+            "current_date": "2023-08-17",
+        },
+    },
 ]
 
 model_list_linshubo = [
     {
+        "owner": "linshubo",
         "model_name": "churn_spinux_model",
         "model_name_desc": "流失模型-首局体验策略",
         "db_name": "offline_churn_spinux_model",
@@ -100,18 +177,28 @@ model_list_linshubo = [
 
 # selected_genre = data_store.SCARD(k_cnt)
 # st.subheader(f"模型：peek_experience_v1,成功条数: {selected_genre}, 执行时间: {select_time}")
+today = get_bj_day()
+current_date = datetime.strptime(today, "%Y-%m-%d")  # 将字符串转换为datetime对象
+date_list = []
+
+# 通过循环生成前7天的日期列表
+for i in range(7):
+    delta = timedelta(days=i)  # 创建一个时间间隔对象，表示i天
+    date = current_date - delta  # 当前日期减去时间间隔，获得前i天的日期
+    date_list.append(date.strftime("%Y-%m-%d"))  # 将日期对象转换为字符串并添加到列表中
+
 
 menu = ["模型元数据", "数据更新"]
 choice = st.sidebar.selectbox("Menu", menu)
 if choice == "模型元数据":
     "# 📈 Real-Time / Feature Monitor Dashboard"
     st.subheader(f"@孙迪 执掌的模型信息：")
-    for m in model_list_sundi:
+    for index, m in enumerate(model_list_sundi):
         model_name = m["model_name"]
         model_name_desc = m["model_name_desc"]
         data_exm = m["data_exm"]
         db_name = m["db_name"]
-        st.markdown(f"#### 1、{model_name_desc}")
+        st.markdown(f"#### {index+1}、{model_name_desc}")
         st.text(f"model_name：{model_name}\n")
         st.text(f"model_name_desc:{model_name_desc}\n")
         st.text(f"db_name:{db_name}\n")
@@ -138,20 +225,79 @@ if choice == "模型元数据":
 elif choice == "数据更新":
     "# 📈 Real-Time / Feature Monitor Dashboard"
 
-    # 假设你有一个名为data的字典，其中包含要转换为DataFrame的数据
+    # 假设你有一个名为data的字典，其中包含要转换为DataFrame的数
+    time_menu = ["今天", "昨天"]
+    time_menu = date_list
+    options = st.sidebar.selectbox("时间区间", time_menu)
+
+    model_name_desc_list = []
+    model_name_list = []
+    success_cnt_list = []
+    real_cnt_list = []
+    update_gap_list = []
+    update_date_list = []
+    owner_list = []
+    size_of_data_list = []
+
+    if options == "今天":
+        _date = get_bj_day()
+    else:
+        _date = options  # get_yestoday_bj()
+
+    merged_list = model_list_sundi + model_list_linshubo
+    for model_info in merged_list:
+        model_name = model_info["model_name"]
+        model_desc = model_info["model_name_desc"]
+        db_name = model_info["db_name"]
+        owner = model_info["owner"]
+        query_date = _date
+        data_store_key = f"{model_name}:{query_date}"
+        db_info = data_store.get(data_store_key)
+
+        model_name_desc_list.append(model_desc)
+        model_name_list.append(model_name)
+
+        if owner == "sundi":
+            _owner = "孙迪"
+        elif owner == "linshubo":
+            _owner = "林书博"
+        else:
+            _owner = "暂无"
+        if db_info is None:
+            succ_cnt = "暂无数据"
+            real_cnt = "暂无数据"
+            update_gap = -1
+            data_size = "暂无数据"
+            _current_date = _date
+        else:
+            _data = pickle.loads(db_info)
+            succ_cnt = _data["success_insert_cnt"]
+            real_cnt = _data["correct_data_cnt"]
+            _current_date = _data["current_date"]
+            update_gap = real_cnt - succ_cnt
+            p = _data["data_path"]
+            file = f"{p}/{db_name}.db"
+            try:
+                data_size = get_file_size(file)
+            except:
+                data_size = f"file {file} not found"
+
+        size_of_data_list.append(data_size)
+        update_gap_list.append(update_gap)
+        real_cnt_list.append(real_cnt)
+        success_cnt_list.append(succ_cnt)
+        update_date_list.append(_current_date)
+        owner_list.append(_owner)
+
     data = {
-        "模型名称": ["付费弹窗离线模型", "付费弹窗离线模型", "流失模型-首局体验策略"],
-        "model_name": ["probs", "probs", "probs"],
-        "db_name": [
-            "offline_popup_model",
-            "offline_popup_model",
-            "offline_popup_model",
-        ],
-        "成功条数": [25, 30, 35],
-        "实际条数": [24, 31, 35],
-        "更新差值": [-1, 1, 0],
-        "更新日期": ["2023-8-16", "2023-8-17", "2023-8-18"],
-        "责任人": ["孙迪", "孙迪", "林书博"],
+        "模型名称": model_name_desc_list,
+        "model_name": model_name_list,
+        "成功条数": success_cnt_list,
+        "实际条数": real_cnt_list,
+        "更新差值": update_gap_list,
+        "数据大小": size_of_data_list,
+        "更新日期": update_date_list,
+        "责任人": owner_list,
     }
 
     def color_survived(val):
@@ -161,12 +307,14 @@ elif choice == "数据更新":
     df = pd.DataFrame(data)
     st.markdown("### Detailed Data Update View")
     st.table(
-        df[["模型名称", "model_name", "db_name", "成功条数", "实际条数", "更新差值", "更新日期", "责任人"]]
+        df[["模型名称", "model_name", "成功条数", "实际条数", "更新差值", "数据大小", "更新日期", "责任人"]]
         .sort_values(["更新差值"], ascending=False)
         .reset_index(drop=True)
         .head(20)
         .style.applymap(color_survived, subset=["更新差值"])
     )
+
+    # st.text(f"{date_list}")
 
     # 使用Pandas将字典转换为DataFrame
 
